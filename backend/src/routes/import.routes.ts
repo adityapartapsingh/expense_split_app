@@ -31,7 +31,7 @@ router.post('/upload', upload.single('file'), async (req: AuthRequest, res: Resp
 });
 
 router.get('/:sessionId', async (req: AuthRequest, res: Response): Promise<void> => {
-  const sessionId = parseInt(req.params.sessionId);
+  const sessionId = parseInt((req.params.sessionId as string));
 
   try {
     const session = await prisma.importSession.findUnique({
@@ -56,7 +56,7 @@ router.get('/:sessionId', async (req: AuthRequest, res: Response): Promise<void>
 });
 
 router.patch('/:sessionId/anomalies/:anomalyId', async (req: AuthRequest, res: Response): Promise<void> => {
-  const anomalyId = parseInt(req.params.anomalyId);
+  const anomalyId = parseInt((req.params.anomalyId as string));
   const { userDecision, correctedData } = req.body;
 
   try {
@@ -78,7 +78,7 @@ router.patch('/:sessionId/anomalies/:anomalyId', async (req: AuthRequest, res: R
 });
 
 router.post('/:sessionId/confirm', async (req: AuthRequest, res: Response): Promise<void> => {
-  const sessionId = parseInt(req.params.sessionId);
+  const sessionId = parseInt((req.params.sessionId as string));
 
   try {
     const session = await prisma.importSession.findUnique({

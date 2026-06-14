@@ -216,7 +216,7 @@ export async function detectAnomalies(groupId: number, rawRows: any[]) {
     }
 
     // 6. Unknown participants & inactive members
-    const participants = splitWithStr.split(';').map(p => p.trim()).filter(Boolean);
+    const participants = splitWithStr.split(';').map((p: string) => p.trim()).filter(Boolean);
     let inactiveDetected = false;
     for (const p of participants) {
       const lowerP = p.toLowerCase();

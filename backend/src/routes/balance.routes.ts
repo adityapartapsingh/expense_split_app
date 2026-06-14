@@ -7,7 +7,7 @@ const router = Router();
 router.use(authenticateToken);
 
 router.get('/:id/balances', async (req: AuthRequest, res: Response): Promise<void> => {
-  const groupId = parseInt(req.params.id);
+  const groupId = parseInt((req.params.id as string));
 
   try {
     const expenses = await prisma.expense.findMany({
@@ -76,7 +76,7 @@ router.get('/:id/balances', async (req: AuthRequest, res: Response): Promise<voi
 });
 
 router.get('/:id/simplify', async (req: AuthRequest, res: Response): Promise<void> => {
-  const groupId = parseInt(req.params.id);
+  const groupId = parseInt((req.params.id as string));
 
   try {
     // Get balances
@@ -89,7 +89,7 @@ router.get('/:id/simplify', async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
     
-    const data = await response.json();
+    const data = (await response.json()) as any;
     const debts = simplifyDebts(data.balances);
 
     res.json({ debts });

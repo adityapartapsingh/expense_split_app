@@ -115,7 +115,7 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
 });
 
 router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt((req.params.id as string));
 
   try {
     const expense = await prisma.expense.findUnique({
@@ -141,7 +141,7 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
 });
 
 router.delete('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt((req.params.id as string));
 
   try {
     await prisma.expense.delete({

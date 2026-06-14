@@ -61,7 +61,7 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
 });
 
 router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
-  const groupId = parseInt(req.params.id);
+  const groupId = parseInt((req.params.id as string));
   const userId = req.user!.id;
 
   try {
@@ -103,7 +103,7 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
 });
 
 router.post('/:id/members', async (req: AuthRequest, res: Response): Promise<void> => {
-  const groupId = parseInt(req.params.id);
+  const groupId = parseInt((req.params.id as string));
   const { userId, joinedAt } = req.body;
 
   try {
@@ -142,8 +142,8 @@ router.post('/:id/members', async (req: AuthRequest, res: Response): Promise<voi
 });
 
 router.patch('/:id/members/:userId', async (req: AuthRequest, res: Response): Promise<void> => {
-  const groupId = parseInt(req.params.id);
-  const memberUserId = parseInt(req.params.userId);
+  const groupId = parseInt((req.params.id as string));
+  const memberUserId = parseInt((req.params.userId as string));
   const { leftAt } = req.body;
 
   try {
@@ -169,8 +169,8 @@ router.patch('/:id/members/:userId', async (req: AuthRequest, res: Response): Pr
 });
 
 router.delete('/:id/members/:userId', async (req: AuthRequest, res: Response): Promise<void> => {
-  const groupId = parseInt(req.params.id);
-  const memberUserId = parseInt(req.params.userId);
+  const groupId = parseInt((req.params.id as string));
+  const memberUserId = parseInt((req.params.userId as string));
 
   try {
     const member = await prisma.groupMember.findFirst({
