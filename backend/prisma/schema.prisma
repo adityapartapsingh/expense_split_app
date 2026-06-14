@@ -1,0 +1,187 @@
+// Prisma schema for Shared Expenses App
+// Uses PostgreSQL (Neon serverless)
+// Supports: multi-currency expenses, time-aware group membership,
+// multiple split types, CSV import with anomaly tracking
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ───────────────────────────────────────────────────────────
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  username     String   @unique
+  displayName  String   @map("display_name")
+  passwordHash String   @map("password_hash")
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  memberships    GroupMember[]
+  paidExpenses   Expense[]       @relation("PaidBy")
+  expenseSplits  ExpenseSplit[]
+  settlementsOut Settlement[]    @relation("SettlementFrom")
+  settlementsIn  Settlement[]    @relation("SettlementTo")
+  importSessions ImportSession[]
+  createdGroups  Group[]         @relation("CreatedBy")
+
+  @@map("users")
+}
+
+// ─── Groups ──────────────────────────────────────────────────────────
+model Group {
+  id              Int      @id @default(autoincrement())
+  name            String
+  description     String?
+  defaultCurrency String   @default("INR") @map("default_currency")
+  createdById     Int      @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  createdBy      User            @relation("CreatedBy", fields: [createdById], references: [id])
+  members        GroupMember[]
+  expenses       Expense[]
+  settlements    Settlement[]
+  importSessions ImportSession[]
+
+  @@map("groups")
+}
+
+// ─── Group Members (time-aware membership) ───────────────────────────
+// joinedAt/leftAt enable Sam's requirement: "I moved in mid-April.
+// Why would March electricity affect my balance?"
+model GroupMember {
+  id       Int       @id @default(autoincrement())
+  groupId  Int       @map("group_id")
+  userId   Int       @map("user_id")
+  joinedAt DateTime  @default(now()) @map("joined_at") @db.Date
+  leftAt   DateTime? @map("left_at") @db.Date // null = still active
+  role     String    @default("member") // "admin" or "member"
+
+  // Relations
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId, joinedAt]) // Allow re-joining
+  @@map("group_members")
+}
+
+// ─── Expenses ────────────────────────────────────────────────────────
+model Expense {
+  id           Int      @id @default(autoincrement())
+  groupId      Int      @map("group_id")
+  paidById     Int      @map("paid_by_id")
+  description  String
+  amount       Decimal  @db.Decimal(12, 2) // Original amount in original currency
+  currency     String   @default("INR")
+  exchangeRate Decimal  @default(1.0) @map("exchange_rate") @db.Decimal(10, 4)
+  expenseDate  DateTime @map("expense_date") @db.Date
+  splitType    String   @map("split_type") // "equal", "unequal", "percentage", "share"
+  category     String?
+  notes        String?
+  isSettlement Boolean  @default(false) @map("is_settlement")
+  importRow    Int?     @map("import_row") // CSV row number for audit trail
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  group  Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidBy User           @relation("PaidBy", fields: [paidById], references: [id])
+  splits ExpenseSplit[]
+
+  @@map("expenses")
+}
+
+// ─── Expense Splits ──────────────────────────────────────────────────
+// Each row = what one user owes for one expense.
+// Supports Rohan's requirement: "show me exactly which expenses make up ₹2,300"
+model ExpenseSplit {
+  id             Int     @id @default(autoincrement())
+  expenseId      Int     @map("expense_id")
+  userId         Int     @map("user_id")
+  owedAmount     Decimal @map("owed_amount") @db.Decimal(12, 2) // In original currency
+  owedAmountBase Decimal @map("owed_amount_base") @db.Decimal(12, 2) // Converted to INR
+  shareValue     Int?    @map("share_value") // For share-based splits
+  percentage     Decimal? @db.Decimal(5, 2) // For percentage-based splits
+
+  // Relations
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([expenseId, userId])
+  @@map("expense_splits")
+}
+
+// ─── Settlements (debt payments) ─────────────────────────────────────
+// Separate from expenses: a settlement reduces balances, not a shared cost.
+model Settlement {
+  id             Int      @id @default(autoincrement())
+  groupId        Int      @map("group_id")
+  fromUserId     Int      @map("from_user_id")
+  toUserId       Int      @map("to_user_id")
+  amount         Decimal  @db.Decimal(12, 2)
+  currency       String   @default("INR")
+  settlementDate DateTime @map("settlement_date") @db.Date
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  fromUser User  @relation("SettlementFrom", fields: [fromUserId], references: [id])
+  toUser   User  @relation("SettlementTo", fields: [toUserId], references: [id])
+
+  @@map("settlements")
+}
+
+// ─── Import Sessions ─────────────────────────────────────────────────
+// Tracks each CSV import attempt and its outcome.
+model ImportSession {
+  id            Int      @id @default(autoincrement())
+  groupId       Int      @map("group_id")
+  importedById  Int      @map("imported_by_id")
+  filename      String
+  totalRows     Int      @map("total_rows")
+  anomalyCount  Int      @default(0) @map("anomaly_count")
+  importedCount Int      @default(0) @map("imported_count")
+  skippedCount  Int      @default(0) @map("skipped_count")
+  status        String   @default("pending_review") // "pending_review", "in_review", "completed"
+  createdAt     DateTime @default(now()) @map("created_at")
+  completedAt   DateTime? @map("completed_at")
+
+  // Relations
+  group      Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  importedBy User            @relation(fields: [importedById], references: [id])
+  anomalies  ImportAnomaly[]
+
+  @@map("import_sessions")
+}
+
+// ─── Import Anomalies ────────────────────────────────────────────────
+// Every data problem found during import. Supports Meera's requirement:
+// "Clean up the duplicates — but I want to approve anything the app deletes or changes."
+model ImportAnomaly {
+  id              Int      @id @default(autoincrement())
+  importSessionId Int      @map("import_session_id")
+  rowNumber       Int      @map("row_number")
+  anomalyType     String   @map("anomaly_type")
+  severity        String   // "error", "warning", "info"
+  description     String
+  suggestedAction String   @map("suggested_action")
+  userDecision    String   @default("pending") @map("user_decision") // "pending","accept","reject","modify"
+  originalData    Json     @map("original_data")
+  correctedData   Json?    @map("corrected_data")
+  reviewedAt      DateTime? @map("reviewed_at")
+
+  // Relations
+  importSession ImportSession @relation(fields: [importSessionId], references: [id], onDelete: Cascade)
+
+  @@map("import_anomalies")
+}
