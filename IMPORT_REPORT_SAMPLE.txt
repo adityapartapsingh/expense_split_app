@@ -1,0 +1,95 @@
+==================================================
+FAIRSHARE - CSV IMPORT REPORT
+==================================================
+Session ID: 1042
+Filename: Expenses Export.csv
+Status: COMPLETED
+Timestamp: 2026-06-14T19:42:00Z
+==================================================
+SUMMARY
+Total Rows Processed: 43
+Rows Successfully Imported: 41
+Rows Skipped/Rejected: 2
+Anomalies Fixed: 17
+==================================================
+
+DETAILED ANOMALY LOG:
+
+[Row 5] Duplicate Entry (WARNING)
+Description: Possible duplicate of row 6.
+Action Taken: ACCEPTED (User kept this row due to notes)
+
+[Row 6] Duplicate Entry (WARNING)
+Description: Possible duplicate of row 5.
+Action Taken: REJECTED (Skipped row)
+
+[Row 7] Comma in Amount (INFO)
+Description: Amount '1,200' contains commas.
+Action Taken: ACCEPTED (Auto-stripped commas to 1200)
+
+[Row 9] Inconsistent Name Casing (INFO)
+Description: Payer 'priya' uses inconsistent casing.
+Action Taken: ACCEPTED (Normalized to 'Priya')
+
+[Row 10] Floating Point Precision (WARNING)
+Description: Amount 899.995 has more than 2 decimal places.
+Action Taken: ACCEPTED (Rounded to 900.00)
+
+[Row 11] Name Variant (WARNING)
+Description: Payer 'Priya S' seems to refer to 'Priya'.
+Action Taken: ACCEPTED (Mapped to Priya)
+
+[Row 13] Missing Payer (ERROR)
+Description: The paid_by field is empty.
+Action Taken: MODIFIED (User manually assigned 'Sam')
+
+[Row 14] Settlement as Expense (WARNING)
+Description: This looks like a settlement, not an expense.
+Action Taken: ACCEPTED (Converted to Settlement record)
+
+[Row 15] Invalid Percentage Split (ERROR)
+Description: Percentages sum to 110%, not 100%.
+Action Taken: MODIFIED (User adjusted to 30/30/20/20)
+
+[Row 20] USD Expense (INFO)
+Description: Expense is in USD.
+Action Taken: ACCEPTED (Applied live exchange rate 83.50)
+
+[Row 23] Unknown Participant (WARNING)
+Description: Participant 'Dev's friend Kabir' is not a known member.
+Action Taken: MODIFIED (User removed from split)
+
+[Row 26] Negative Amount (WARNING)
+Description: Amount is negative (-30).
+Action Taken: ACCEPTED (Treated as refund)
+
+[Row 27] Malformed Date (WARNING)
+Description: Date format 'Mar-14' is inconsistent.
+Action Taken: ACCEPTED (Parsed as 14-03-2026)
+
+[Row 28] Missing Currency (WARNING)
+Description: Currency field is empty.
+Action Taken: ACCEPTED (Defaulted to INR)
+
+[Row 31] Zero Amount (ERROR)
+Description: Amount is 0.
+Action Taken: REJECTED (Skipped row)
+
+[Row 34] Ambiguous Date (WARNING)
+Description: Date '04-05-2026' could be May 4 or April 5.
+Action Taken: ACCEPTED (Assumed May 4)
+
+[Row 36] Inactive Member in Split (WARNING)
+Description: Meera was not an active member on 02-04-2026.
+Action Taken: MODIFIED (User removed Meera from split)
+
+[Row 38] Settlement as Expense (WARNING)
+Description: This looks like a settlement, not an expense.
+Action Taken: ACCEPTED (Converted to Settlement record)
+
+[Row 42] Conflicting Split Info (INFO)
+Description: Split type is equal but custom details are provided.
+Action Taken: ACCEPTED (Used equal split and ignored details)
+
+==================================================
+End of Report
