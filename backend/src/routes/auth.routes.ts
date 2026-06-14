@@ -1,170 +1,119 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/database';
-import { authenticateToken, AuthenticatedRequest, JwtPayload } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-function generateToken(user: { id: number; email: string; username: string }): string {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('JWT_SECRET is not configured');
-  }
+router.post('/register', async (req: Request, res: Response): Promise<void> => {
+  const { email, username, displayName, password } = req.body;
 
-  const payload: JwtPayload = {
-    userId: user.id,
-    email: user.email,
-    username: user.username,
-  };
-
-  return jwt.sign(payload, secret, {
-    expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as string,
-  });
-}
-
-// ─── POST /api/auth/register ────────────────────────────────────────────
-router.post('/register', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { email, username, displayName, password } = req.body;
-
-    // Validate required fields
-    if (!email || !username || !displayName || !password) {
-      res.status(400).json({ error: 'All fields are required: email, username, displayName, password' });
-      return;
-    }
-
-    // Check if email or username already exists
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [
-          { email: email.toLowerCase() },
-          { username: username.toLowerCase() },
-        ],
-      },
+        OR: [{ email }, { username }]
+      }
     });
 
     if (existingUser) {
-      const field = existingUser.email === email.toLowerCase() ? 'email' : 'username';
-      res.status(409).json({ error: `A user with this ${field} already exists.` });
+      res.status(400).json({ message: 'Email or username already exists' });
       return;
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user
     const user = await prisma.user.create({
       data: {
-        email: email.toLowerCase(),
-        username: username.toLowerCase(),
+        email,
+        username,
         displayName,
-        passwordHash,
-      },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        displayName: true,
-        avatarUrl: true,
-        createdAt: true,
-      },
+        passwordHash
+      }
     });
 
-    // Generate JWT
-    const token = generateToken(user);
+    const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+    const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '7d' });
 
     res.status(201).json({
-      message: 'User registered successfully',
-      token,
-      user,
-    });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ error: 'Internal server error during registration.' });
-  }
-});
-
-// ─── POST /api/auth/login ───────────────────────────────────────────────
-router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  try {
-    const { email, username, password } = req.body;
-
-    if ((!email && !username) || !password) {
-      res.status(400).json({ error: 'Email or username, and password are required.' });
-      return;
-    }
-
-    // Find user by email or username
-    const user = await prisma.user.findFirst({
-      where: email
-        ? { email: email.toLowerCase() }
-        : { username: username.toLowerCase() },
-    });
-
-    if (!user) {
-      res.status(401).json({ error: 'Invalid credentials.' });
-      return;
-    }
-
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-    if (!isPasswordValid) {
-      res.status(401).json({ error: 'Invalid credentials.' });
-      return;
-    }
-
-    // Generate JWT
-    const token = generateToken(user);
-
-    res.json({
-      message: 'Login successful',
       token,
       user: {
         id: user.id,
         email: user.email,
         username: user.username,
         displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        createdAt: user.createdAt,
-      },
+        createdAt: user.createdAt
+      }
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error during login.' });
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-// ─── GET /api/auth/me ───────────────────────────────────────────────────
-router.get('/me', authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/login', async (req: Request, res: Response): Promise<void> => {
+  const { login, password } = req.body;
+
   try {
-    if (!req.user) {
-      res.status(401).json({ error: 'Not authenticated.' });
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: login }, { username: login }]
+      }
+    });
+
+    if (!user) {
+      res.status(401).json({ message: 'Invalid credentials' });
       return;
     }
 
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+
+    if (!isValidPassword) {
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
+    }
+
+    const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+    const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '7d' });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        displayName: user.displayName,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/me', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
     const user = await prisma.user.findUnique({
-      where: { id: req.user.userId },
+      where: { id: req.user?.id },
       select: {
         id: true,
         email: true,
         username: true,
         displayName: true,
-        avatarUrl: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+        createdAt: true
+      }
     });
 
     if (!user) {
-      res.status(404).json({ error: 'User not found.' });
+      res.status(404).json({ message: 'User not found' });
       return;
     }
 
     res.json({ user });
   } catch (error) {
-    console.error('Get me error:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
