@@ -40,7 +40,7 @@ export default function DashboardLayout({
       {sidebarOpen && (
         <div 
           className="modal-backdrop" 
-          style={{ zIndex: 'var(--z-sticky)' - 1, animation: 'fadeIn 0.2s' }}
+          style={{ zIndex: 99, animation: 'fadeIn 0.2s' }}
           onClick={closeSidebar}
         />
       )}

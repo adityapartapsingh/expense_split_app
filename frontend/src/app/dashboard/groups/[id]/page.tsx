@@ -3,14 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import api, { Group, Expense, SimplifiedDebt } from '@/lib/api';
+import api, { GroupDetail, Expense, SimplifiedDebt } from '@/lib/api';
 
 export default function GroupPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const { user } = useAuth();
   const { error } = useToast();
   
-  const [group, setGroup] = useState<Group | null>(null);
+  const [group, setGroup] = useState<GroupDetail | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [balances, setBalances] = useState<any[]>([]);
   const [debts, setDebts] = useState<SimplifiedDebt[]>([]);
