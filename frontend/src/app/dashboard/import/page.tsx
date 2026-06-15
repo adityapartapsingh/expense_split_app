@@ -133,7 +133,11 @@ export default function ImportWizard() {
                 if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
               }}
             />
-            <div className="dropzone-icon">📄</div>
+            <div className="dropzone-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-brand-accent/50 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
             <div className="dropzone-text">
               {file ? file.name : 'Drag & drop your CSV file here, or click to browse'}
             </div>
@@ -269,14 +273,21 @@ export default function ImportWizard() {
       )}
 
       {step === 4 && report && (
-        <div className="glass-card text-center animate-in">
-          <div className="text-6xl mb-4">✅</div>
+        <div className="glass-card text-center animate-in flex flex-col items-center">
+          <div className="w-24 h-24 mb-6 rounded-full bg-semantic-success/20 flex items-center justify-center text-semantic-success shadow-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
           <h2 className="text-3xl font-bold mb-2">Import Complete!</h2>
           <p className="text-muted mb-8">Successfully imported {report.importedCount} rows into your group.</p>
           
           <div className="flex justify-center gap-4">
-            <button className="btn btn-secondary" onClick={() => window.print()}>
-              📄 Save Report
+            <button className="btn btn-secondary flex items-center gap-2" onClick={() => window.print()}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Save Report
             </button>
             <Link href={`/dashboard/groups/${session?.groupId}`} className="btn btn-primary">
               Go to Group →

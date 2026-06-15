@@ -68,6 +68,7 @@ model GroupMember {
   joinedAt DateTime  @default(now()) @map("joined_at") @db.Date
   leftAt   DateTime? @map("left_at") @db.Date // null = still active
   role     String    @default("member") // "admin" or "member"
+  status   String    @default("active") // "pending", "active", "rejected"
 
   // Relations
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)

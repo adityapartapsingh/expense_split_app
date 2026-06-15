@@ -60,6 +60,22 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   }
 });
 
+router.get('/invites/pending', async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+  try {
+    const invites = await prisma.groupMember.findMany({
+      where: { userId, status: 'pending', leftAt: null },
+      include: {
+        group: true
+      }
+    });
+    res.json({ invites });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   const groupId = parseInt((req.params.id as string));
   const userId = req.user!.id;
@@ -117,6 +133,7 @@ router.post('/:id/members', async (req: AuthRequest, res: Response): Promise<voi
     }
 
     const identifier = username || email || phone;
+    let isDummy = false;
     if (identifier && !userId) {
       let user = await prisma.user.findFirst({ 
         where: { 
@@ -126,6 +143,7 @@ router.post('/:id/members', async (req: AuthRequest, res: Response): Promise<voi
       
       if (!user) {
         // Create dummy user if not found
+        isDummy = true;
         const randomSuffix = Math.floor(Math.random() * 10000000);
         user = await prisma.user.create({
           data: {
@@ -136,6 +154,8 @@ router.post('/:id/members', async (req: AuthRequest, res: Response): Promise<voi
             passwordHash: 'dummy_hash_not_usable' // They cannot login with this
           }
         });
+      } else {
+        isDummy = user.passwordHash === 'dummy_hash_not_usable';
       }
       userId = user.id;
     }
@@ -163,7 +183,8 @@ router.post('/:id/members', async (req: AuthRequest, res: Response): Promise<voi
         groupId,
         userId,
         joinedAt: new Date(joinedAt || new Date()),
-        role: 'member'
+        role: 'member',
+        status: isDummy ? 'active' : 'pending'
       },
       include: {
         user: {
@@ -206,9 +227,57 @@ router.patch('/:id/members/:userId', async (req: AuthRequest, res: Response): Pr
   }
 });
 
+router.patch('/:id/members/me/accept', async (req: AuthRequest, res: Response): Promise<void> => {
+  const groupId = parseInt((req.params.id as string));
+  const userId = req.user!.id;
+
+  try {
+    const member = await prisma.groupMember.findFirst({
+      where: { groupId, userId, leftAt: null, status: 'pending' }
+    });
+    if (!member) {
+      res.status(404).json({ message: 'Pending invitation not found' });
+      return;
+    }
+
+    await prisma.groupMember.update({
+      where: { id: member.id },
+      data: { status: 'active' }
+    });
+    res.json({ message: 'Invitation accepted' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.patch('/:id/members/me/reject', async (req: AuthRequest, res: Response): Promise<void> => {
+  const groupId = parseInt((req.params.id as string));
+  const userId = req.user!.id;
+
+  try {
+    const member = await prisma.groupMember.findFirst({
+      where: { groupId, userId, leftAt: null, status: 'pending' }
+    });
+    if (!member) {
+      res.status(404).json({ message: 'Pending invitation not found' });
+      return;
+    }
+
+    await prisma.groupMember.update({
+      where: { id: member.id },
+      data: { status: 'rejected', leftAt: new Date() }
+    });
+    res.json({ message: 'Invitation rejected' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 router.patch('/:id/members/:userId/promote', async (req: AuthRequest, res: Response): Promise<void> => {
   const groupId = parseInt((req.params.id as string));
-  const memberUserId = parseInt((req.params.userId as string));
+  const targetUserId = parseInt((req.params.userId as string));
   const currentUserId = req.user!.id;
 
   try {
@@ -220,47 +289,69 @@ router.patch('/:id/members/:userId/promote', async (req: AuthRequest, res: Respo
       return;
     }
 
-    const member = await prisma.groupMember.findFirst({
-      where: { groupId, userId: memberUserId, leftAt: null }
+    const targetMember = await prisma.groupMember.findFirst({
+      where: { groupId, userId: targetUserId, leftAt: null }
     });
-
-    if (!member) {
+    if (!targetMember) {
       res.status(404).json({ message: 'Active member not found' });
       return;
     }
 
-    const updatedMember = await prisma.groupMember.update({
-      where: { id: member.id },
+    await prisma.groupMember.update({
+      where: { id: targetMember.id },
       data: { role: 'admin' }
     });
 
-    res.json({ message: 'Member promoted to admin', member: updatedMember });
+    res.json({ message: 'Member promoted successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-router.delete('/:id/members/me', async (req: AuthRequest, res: Response): Promise<void> => {
-  const groupId = parseInt((req.params.id as string));
-  const userId = req.user!.id;
+async function handleAdminTransferIfNeeded(groupId: number, leavingUserId: number, leavingUserRole: string) {
+  if (leavingUserRole !== 'admin') return;
 
-  try {
-    const member = await prisma.groupMember.findFirst({
-      where: { groupId, userId, leftAt: null }
+  const remainingAdmins = await prisma.groupMember.count({
+    where: { groupId, leftAt: null, role: 'admin', userId: { not: leavingUserId } }
+  });
+
+  if (remainingAdmins === 0) {
+    const remainingMembers = await prisma.groupMember.findMany({
+      where: { groupId, leftAt: null, userId: { not: leavingUserId } }
     });
 
-    if (!member) {
-      res.status(404).json({ message: 'Active member not found' });
+    if (remainingMembers.length > 0) {
+      const randomMember = remainingMembers[Math.floor(Math.random() * remainingMembers.length)];
+      await prisma.groupMember.update({
+        where: { id: randomMember.id },
+        data: { role: 'admin' }
+      });
+    }
+  }
+}
+
+router.delete('/:id/members/me', async (req: AuthRequest, res: Response): Promise<void> => {
+  const groupId = parseInt((req.params.id as string));
+  const currentUserId = req.user!.id;
+
+  try {
+    const currentMember = await prisma.groupMember.findFirst({
+      where: { groupId, userId: currentUserId, leftAt: null }
+    });
+    if (!currentMember) {
+      res.status(404).json({ message: 'Member not found' });
       return;
     }
 
-    const updatedMember = await prisma.groupMember.update({
-      where: { id: member.id },
-      data: { leftAt: new Date() }
+    await handleAdminTransferIfNeeded(groupId, currentUserId, currentMember.role);
+
+    await prisma.groupMember.update({
+      where: { id: currentMember.id },
+      data: { leftAt: new Date(), status: 'rejected' }
     });
 
-    res.json({ message: 'You have left the group', member: updatedMember });
+    res.json({ message: 'You have left the group' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });
@@ -269,7 +360,7 @@ router.delete('/:id/members/me', async (req: AuthRequest, res: Response): Promis
 
 router.delete('/:id/members/:userId', async (req: AuthRequest, res: Response): Promise<void> => {
   const groupId = parseInt((req.params.id as string));
-  const memberUserId = parseInt((req.params.userId as string));
+  const targetUserId = parseInt((req.params.userId as string));
   const currentUserId = req.user!.id;
 
   try {
@@ -281,18 +372,19 @@ router.delete('/:id/members/:userId', async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const member = await prisma.groupMember.findFirst({
-      where: { groupId, userId: memberUserId, leftAt: null }
+    const targetMember = await prisma.groupMember.findFirst({
+      where: { groupId, userId: targetUserId, leftAt: null }
     });
-
-    if (!member) {
+    if (!targetMember) {
       res.status(404).json({ message: 'Active member not found' });
       return;
     }
 
+    await handleAdminTransferIfNeeded(groupId, targetUserId, targetMember.role);
+
     const updatedMember = await prisma.groupMember.update({
-      where: { id: member.id },
-      data: { leftAt: new Date() }
+      where: { id: targetMember.id },
+      data: { leftAt: new Date(), status: 'rejected' }
     });
 
     res.json({ message: 'Member removed', member: updatedMember });

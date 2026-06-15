@@ -71,8 +71,7 @@ export default function RegisterPage() {
       <div className="login-content animate-in">
         <div className="login-header">
           <div className="login-logo">
-            <span className="login-icon">💰</span>
-            <h1>FairShare</h1>
+            <h1>Expense2Split</h1>
           </div>
           <p className="login-tagline">Create an account to start splitting.</p>
         </div>

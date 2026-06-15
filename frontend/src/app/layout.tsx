@@ -3,7 +3,7 @@ import '@/styles/globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'FairShare — Shared Expenses, Simplified',
+  title: 'Expense2Split — Shared Expenses, Simplified',
   description: 'Split expenses with your flatmates, track balances, settle debts. Built for real-world messy data.',
   keywords: 'expense tracker, split bills, flatmates, shared expenses, balance calculator',
 };

@@ -139,6 +139,22 @@ class ApiClient {
     });
   }
 
+  async getInvitations() {
+    return this.request<{ invites: any[] }>('/groups/invites/pending');
+  }
+
+  async acceptInvitation(groupId: number) {
+    return this.request(`/groups/${groupId}/members/me/accept`, {
+      method: 'PATCH',
+    });
+  }
+
+  async rejectInvitation(groupId: number) {
+    return this.request(`/groups/${groupId}/members/me/reject`, {
+      method: 'PATCH',
+    });
+  }
+
   // ─── Expenses ─────────────────────────────────────────────────
   async getExpenses(groupId: number, params?: {
     page?: number;
