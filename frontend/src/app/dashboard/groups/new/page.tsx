@@ -8,6 +8,7 @@ import api from '@/lib/api';
 export default function CreateGroupPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [type, setType] = useState('other');
   const [defaultCurrency, setDefaultCurrency] = useState('INR');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function CreateGroupPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await api.createGroup({ name, description, defaultCurrency });
+      const response = await api.createGroup({ name, description, type, defaultCurrency });
       success('Group created successfully!');
       router.push(`/dashboard/groups/${response.group.id}`);
     } catch (err) {
@@ -58,6 +59,20 @@ export default function CreateGroupPage() {
               placeholder="What is this group for?"
               rows={3}
             />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Group Type</label>
+            <select
+              className="form-select"
+              value={type}
+              onChange={e => setType(e.target.value)}
+            >
+              <option value="trip">Trip</option>
+              <option value="home">Home</option>
+              <option value="couple">Couple</option>
+              <option value="other">Other</option>
+            </select>
           </div>
 
           <div className="form-group">

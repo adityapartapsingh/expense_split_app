@@ -1,13 +1,14 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../config/database';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { calculateBalances } from './balance.routes';
 
 const router = Router();
 
 router.use(authenticateToken);
 
 router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
-  const { name, description, defaultCurrency } = req.body;
+  const { name, description, type, defaultCurrency } = req.body;
   const userId = req.user!.id;
 
   try {
@@ -15,6 +16,7 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
       data: {
         name,
         description,
+        type: type || 'other',
         defaultCurrency: defaultCurrency || 'INR',
         createdById: userId,
         members: {
@@ -40,6 +42,7 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const groups = await prisma.group.findMany({
       where: {
+        type: { not: 'non-group' },
         members: {
           some: {
             userId: userId
@@ -344,6 +347,14 @@ router.delete('/:id/members/me', async (req: AuthRequest, res: Response): Promis
       return;
     }
 
+    // Check balance
+    const balances = await calculateBalances(groupId);
+    const userBalance = balances.find((b: any) => b.user.id === currentUserId);
+    if (userBalance && Math.abs(userBalance.balance) > 0.01) {
+      res.status(400).json({ message: 'Cannot leave group until all your dues are cleared' });
+      return;
+    }
+
     await handleAdminTransferIfNeeded(groupId, currentUserId, currentMember.role);
 
     await prisma.groupMember.update({
@@ -388,6 +399,39 @@ router.delete('/:id/members/:userId', async (req: AuthRequest, res: Response): P
     });
 
     res.json({ message: 'Member removed', member: updatedMember });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.delete('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
+  const groupId = parseInt((req.params.id as string));
+  const currentUserId = req.user!.id;
+
+  try {
+    const currentMember = await prisma.groupMember.findFirst({
+      where: { groupId, userId: currentUserId, leftAt: null }
+    });
+    
+    if (!currentMember || currentMember.role !== 'admin') {
+      res.status(403).json({ message: 'Only admins can delete the group' });
+      return;
+    }
+
+    const balances = await calculateBalances(groupId);
+    const hasUnsettledDebts = balances.some((b: any) => Math.abs(b.balance) > 0.01);
+    
+    if (hasUnsettledDebts) {
+      res.status(400).json({ message: 'Cannot delete group until all settlements are done and balances are 0' });
+      return;
+    }
+
+    await prisma.group.delete({
+      where: { id: groupId }
+    });
+
+    res.json({ message: 'Group deleted successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });

@@ -87,6 +87,17 @@ export default function GroupPage() {
     }
   };
 
+  const handleDeleteGroup = async () => {
+    if (!confirm('Are you sure you want to DELETE this group permanently? This cannot be undone.')) return;
+    try {
+      await api.deleteGroup(Number(id));
+      success('Group deleted successfully');
+      window.location.href = '/dashboard/groups';
+    } catch (err: any) {
+      error(err.message || 'Failed to delete group. Ensure all debts are settled first.');
+    }
+  };
+
   if (!id || isNaN(Number(id))) return <div className="p-12 text-center text-xl font-bold">Invalid Group ID.</div>;
   if (isLoading) return <div className="flex justify-center p-12"><div className="w-16 h-16 border-4 border-brand-accent/30 border-t-brand-accent rounded-full animate-spin"></div></div>;
   if (!group) return <div className="p-12 text-center text-xl font-bold">Group not found</div>;
@@ -104,6 +115,11 @@ export default function GroupPage() {
           <p className="text-xl text-text-muted">{group.description}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 z-10 w-full md:w-auto">
+          {isAdmin && (
+            <button className="px-6 py-4 rounded-2xl font-bold text-semantic-danger hover:text-white bg-semantic-danger/10 hover:bg-semantic-danger border border-semantic-danger/20 hover:border-semantic-danger transition-colors flex-1 md:flex-none" onClick={handleDeleteGroup}>
+              Delete Group
+            </button>
+          )}
           {currentUserMember && (
             <button className="px-6 py-4 rounded-2xl font-bold text-text-muted hover:text-text-main bg-bg-primary hover:bg-bg-primary/80 border border-border-subtle transition-colors flex-1 md:flex-none" onClick={handleLeaveGroup}>
               Leave Group
@@ -213,7 +229,7 @@ export default function GroupPage() {
                     <span className="text-2xl font-black text-semantic-danger">₹{debt.amount.toFixed(0)}</span>
                   </div>
                   <button 
-                    className="w-full py-4 rounded-xl font-bold text-white bg-text-main hover:bg-brand-accent transition-colors"
+                    className="w-full py-4 rounded-xl font-bold text-bg-primary bg-text-main hover:bg-brand-accent transition-colors"
                     onClick={() => { setSelectedDebt(debt); setIsSettleDebtOpen(true); }}
                   >
                     Record Payment Now

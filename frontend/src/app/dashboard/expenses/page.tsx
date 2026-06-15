@@ -136,10 +136,10 @@ export default function PersonalExpensesPage() {
       )}
 
       {/* Summary + Filter Row */}
-      <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-bg-secondary rounded-3xl border border-border-subtle mb-8 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-bg-secondary rounded-3xl border border-border-subtle mb-6 shadow-sm">
         <div className="flex items-center gap-4 mb-4 sm:mb-0">
-          <div className="w-16 h-16 rounded-full bg-brand-accent/10 flex items-center justify-center text-brand-accent border border-brand-accent/20">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-12 h-12 rounded-full bg-brand-accent/10 flex items-center justify-center text-brand-accent border border-brand-accent/20">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
@@ -175,23 +175,23 @@ export default function PersonalExpensesPage() {
           {expenses.map(exp => {
             const cat = CATEGORIES.find(c => c.key === exp.category) || CATEGORIES[CATEGORIES.length - 1];
             return (
-              <div key={exp.id} className="flex flex-col sm:flex-row items-center justify-between p-6 bg-bg-primary hover:bg-bg-secondary border border-border-subtle hover:border-brand-accent/30 rounded-3xl transition-all group">
-                <div className="flex items-center gap-6 w-full sm:w-auto mb-4 sm:mb-0">
-                  <div className="flex items-center justify-center w-16 h-16 text-3xl bg-bg-secondary border border-border-subtle rounded-2xl group-hover:scale-110 transition-transform shadow-inner">
+              <div key={exp.id} className="flex flex-col sm:flex-row items-center justify-between p-4 bg-bg-primary hover:bg-bg-secondary border border-border-subtle hover:border-brand-accent/30 rounded-3xl transition-all group">
+                <div className="flex items-center gap-4 w-full sm:w-auto mb-4 sm:mb-0">
+                  <div className="flex items-center justify-center w-12 h-12 text-2xl bg-bg-secondary border border-border-subtle rounded-2xl group-hover:scale-110 transition-transform shadow-inner">
                     {cat.icon}
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-text-main mb-1">{exp.description}</div>
-                    <div className="text-sm font-bold text-text-muted flex items-center gap-2">
+                    <div className="text-lg font-bold text-text-main mb-1">{exp.description}</div>
+                    <div className="text-xs font-bold text-text-muted flex items-center gap-2">
                       <span className="uppercase tracking-wider">{cat.label}</span>
                       <span>•</span>
                       <span>{new Date(exp.expenseDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-8">
-                  <div className="text-2xl font-black text-text-main">₹{Number(exp.amount).toFixed(0)}</div>
-                  <button className="w-12 h-12 flex items-center justify-center rounded-xl bg-semantic-danger/10 text-semantic-danger hover:bg-semantic-danger hover:text-white transition-colors" onClick={() => handleDelete(exp.id)} title="Delete Expense">
+                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-6">
+                  <div className="text-xl font-black text-text-main">₹{Number(exp.amount).toFixed(0)}</div>
+                  <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-semantic-danger/10 text-semantic-danger hover:bg-semantic-danger hover:text-white transition-colors" onClick={() => handleDelete(exp.id)} title="Delete Expense">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>

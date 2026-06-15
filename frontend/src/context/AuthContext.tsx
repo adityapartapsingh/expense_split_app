@@ -13,6 +13,8 @@ interface AuthContextType {
   login: (login: string, password: string) => Promise<void>;
   register: (data: { email: string; username: string; displayName: string; password: string }) => Promise<void>;
   logout: () => void;
+  updateProfile: (data: { displayName?: string; username?: string; email?: string; phone?: string }) => Promise<void>;
+  updatePassword: (data: { currentPassword?: string; newPassword?: string }) => Promise<void>;
   error: string | null;
   clearError: () => void;
 }
@@ -83,6 +85,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
   }, []);
 
+  const updateProfile = useCallback(async (data: { displayName?: string; username?: string; email?: string; phone?: string }) => {
+    setError(null);
+    try {
+      const response = await api.updateProfile(data);
+      setUser(response.user);
+    } catch (err: unknown) {
+      const message = (err as { message?: string })?.message || 'Profile update failed';
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  const updatePassword = useCallback(async (data: { currentPassword?: string; newPassword?: string }) => {
+    setError(null);
+    try {
+      await api.updatePassword(data);
+    } catch (err: unknown) {
+      const message = (err as { message?: string })?.message || 'Password update failed';
+      setError(message);
+      throw err;
+    }
+  }, []);
+
   const clearError = useCallback(() => setError(null), []);
 
   return (
@@ -94,6 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        updateProfile,
+        updatePassword,
         error,
         clearError,
       }}

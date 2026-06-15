@@ -34,6 +34,8 @@ model User {
   createdGroups    Group[]           @relation("CreatedBy")
   personalExpenses PersonalExpense[] @relation("PersonalExpenses")
   savingsTargets   SavingsTarget[]   @relation("SavingsTargets")
+  friendshipsInitiated Friendship[]  @relation("FriendshipsInitiated")
+  friendshipsReceived  Friendship[]  @relation("FriendshipsReceived")
 
   @@map("users")
 }
@@ -43,6 +45,7 @@ model Group {
   id              Int      @id @default(autoincrement())
   name            String
   description     String?
+  type            String   @default("other") // "trip", "home", "couple", "other", "non-group"
   defaultCurrency String   @default("INR") @map("default_currency")
   createdById     Int      @map("created_by_id")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -224,4 +227,20 @@ model SavingsTarget {
   user User @relation("SavingsTargets", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("savings_targets")
+}
+
+// ─── Friendships ─────────────────────────────────────────────────────
+model Friendship {
+  id        Int      @id @default(autoincrement())
+  user1Id   Int      @map("user1_id")
+  user2Id   Int      @map("user2_id")
+  status    String   @default("pending") // "pending", "accepted"
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user1 User @relation("FriendshipsInitiated", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2 User @relation("FriendshipsReceived", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  @@unique([user1Id, user2Id])
+  @@map("friendships")
 }

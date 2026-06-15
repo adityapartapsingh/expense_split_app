@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useTheme } from '@/context/ThemeContext';
 import Link from 'next/link';
 
 // Helper for dot pattern background
@@ -16,24 +16,8 @@ const DotPattern = () => (
 );
 
 export default function RootPage() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    // Check system preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    if (!isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
+  const { theme, toggleTheme } = useTheme();
+  const isDarkMode = theme === 'dark';
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-main font-sans selection:bg-brand-accent/20 flex flex-col">
@@ -42,10 +26,7 @@ export default function RootPage() {
       <header className="fixed top-0 w-full z-50 backdrop-blur-xl bg-bg-primary/70 border-b border-border-subtle py-4 px-6 transition-colors duration-300">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-accent flex items-center justify-center shadow-lg shadow-brand-accent/20">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-            </div>
-            <span className="font-black tracking-tight text-xl text-brand-primary">Expense2Split</span>
+            <span className="text-2xl font-black tracking-tight text-text-main">Expense2Split</span>
           </div>
           
           <nav className="hidden md:flex items-center gap-8 bg-bg-secondary/50 px-6 py-2.5 rounded-full border border-border-subtle/50 backdrop-blur-sm">
@@ -58,9 +39,17 @@ export default function RootPage() {
 
           <div className="flex items-center gap-4">
             <button onClick={toggleTheme} className="p-2.5 rounded-full border border-border-subtle hover:bg-bg-secondary transition-colors text-text-muted flex items-center justify-center w-10 h-10 hover:shadow-sm bg-bg-primary/50">
-              {isDarkMode ? '🌞' : '🌙'}
+              {isDarkMode ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
             </button>
-            <Link href="/login" className="bg-brand-primary text-bg-primary text-sm font-bold px-5 py-2.5 rounded-full hover:shadow-lg hover:shadow-brand-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
+            <Link href="/login" className="bg-text-main text-bg-primary text-sm font-bold px-5 py-2.5 rounded-full hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
               Launch App Portal
             </Link>
           </div>
@@ -177,7 +166,7 @@ export default function RootPage() {
         {/* COMPONENT D: Deep Technical Feature Specification Module */}
         <section id="tech-specifications" className="py-24 md:py-32 px-6 md:px-12 bg-bg-primary border-b border-border-subtle">
           <div className="max-w-7xl mx-auto w-full">
-            <div className="bg-brand-primary text-bg-primary rounded-[3rem] p-10 md:p-16 overflow-hidden relative shadow-2xl">
+            <div className="bg-slate-900 text-white rounded-[3rem] p-10 md:p-16 overflow-hidden relative shadow-2xl">
               {/* Background geometric accents */}
               <div className="absolute top-0 right-0 w-96 h-96 bg-brand-accent/30 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
               <div className="absolute bottom-0 left-0 w-96 h-96 bg-semantic-success/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2"></div>
@@ -305,10 +294,7 @@ export default function RootPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-12 relative z-10">
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center">
-                <svg className="w-4 h-4 text-bg-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-              </div>
-              <span className="font-black tracking-tight text-xl text-text-main">Expense2Split</span>
+              <span className="text-2xl font-black tracking-tight text-text-main">Expense2Split</span>
             </div>
             <span className="text-sm text-text-muted max-w-xs leading-relaxed">A Next-Generation, Non-Linear Group Expense Splitting Platform.</span>
           </div>

@@ -97,6 +97,20 @@ class ApiClient {
     return this.request<{ user: User }>('/auth/me');
   }
 
+  async updateProfile(data: { displayName?: string; username?: string; email?: string; phone?: string }) {
+    return this.request<{ user: User }>('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePassword(data: { currentPassword?: string; newPassword?: string }) {
+    return this.request<{ message: string }>('/auth/password', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
   // ─── Groups ───────────────────────────────────────────────────
   async getGroups() {
     return this.request<{ groups: Group[] }>('/groups');
@@ -106,10 +120,16 @@ class ApiClient {
     return this.request<{ group: GroupDetail }>(`/groups/${id}`);
   }
 
-  async createGroup(data: { name: string; description?: string; defaultCurrency?: string }) {
+  async createGroup(data: { name: string; description?: string; type?: string; defaultCurrency: string }) {
     return this.request<{ group: Group }>('/groups', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async deleteGroup(id: number) {
+    return this.request(`/groups/${id}`, {
+      method: 'DELETE',
     });
   }
 

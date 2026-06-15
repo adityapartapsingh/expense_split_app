@@ -121,4 +121,93 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res: Response): Pr
   }
 });
 
+router.patch('/me', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { displayName, username, email, phone } = req.body;
+  const userId = req.user?.id;
+
+  try {
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        id: { not: userId },
+        OR: [
+          ...(email ? [{ email }] : []),
+          ...(username ? [{ username }] : []),
+          ...(phone ? [{ phone }] : [])
+        ]
+      }
+    });
+
+    if (existingUser) {
+      if (email && existingUser.email === email) {
+        res.status(400).json({ message: 'Email is already in use by another account' });
+        return;
+      }
+      if (username && existingUser.username === username) {
+        res.status(400).json({ message: 'Username is already taken' });
+        return;
+      }
+      if (phone && existingUser.phone === phone) {
+        res.status(400).json({ message: 'Phone number is already in use' });
+        return;
+      }
+      res.status(400).json({ message: 'Email, phone, or username already exists' });
+      return;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(displayName !== undefined && { displayName }),
+        ...(username !== undefined && { username }),
+        ...(email !== undefined && { email }),
+        ...(phone !== undefined && { phone }),
+      },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        username: true,
+        displayName: true,
+        createdAt: true
+      }
+    });
+
+    res.json({ user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.patch('/password', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user?.id;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValidPassword) {
+      res.status(400).json({ message: 'Incorrect current password' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash }
+    });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 export default router;

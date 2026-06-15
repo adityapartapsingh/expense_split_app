@@ -73,15 +73,15 @@
 
 /* ─── Deep Obsidian Dark Theme (Stitch Default) ────────────────────── */
 [data-theme="dark"] {
-  --bg-primary: #020617;
-  --bg-secondary: #0f172a;
-  --bg-tertiary: #1e293b;
-  --bg-card: rgba(15, 23, 42, 0.7);
-  --bg-card-hover: rgba(30, 41, 59, 0.8);
-  --bg-input: rgba(30, 41, 59, 0.6);
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #2a2a2a;
+  --bg-card: rgba(30, 30, 30, 0.7);
+  --bg-card-hover: rgba(42, 42, 42, 0.8);
+  --bg-input: rgba(42, 42, 42, 0.6);
   --bg-input-focus: rgba(14, 165, 233, 0.1);
 
-  --glass-bg: rgba(2, 6, 23, 0.85);
+  --glass-bg: rgba(18, 18, 18, 0.85);
   --glass-border: rgba(255, 255, 255, 0.05);
   --glass-border-hover: rgba(14, 165, 233, 0.2);
 

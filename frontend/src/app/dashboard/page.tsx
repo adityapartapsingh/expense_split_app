@@ -170,7 +170,7 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-3xl font-black text-text-main tracking-tight">Your Groups</h2>
-              <Link href="/dashboard/groups/new" className="px-6 py-3 rounded-2xl font-bold text-white bg-text-main hover:bg-brand-accent transition-colors shadow-lg">
+              <Link href="/dashboard/groups/new" className="px-6 py-3 rounded-2xl font-bold text-white bg-brand-accent hover:bg-sky-500 transition-colors shadow-lg">
                 + New Group
               </Link>
             </div>

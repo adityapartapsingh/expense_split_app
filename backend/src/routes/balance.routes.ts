@@ -6,7 +6,7 @@ import { simplifyDebts } from '../utils/debtSimplifier';
 const router = Router();
 router.use(authenticateToken);
 
-async function calculateBalances(groupId: number) {
+export async function calculateBalances(groupId: number) {
   const expenses = await prisma.expense.findMany({
     where: { groupId },
     include: { splits: true }

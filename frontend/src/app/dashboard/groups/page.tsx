@@ -60,17 +60,17 @@ export default function GroupsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {groups.map((group) => (
             <Link key={group.id} href={`/dashboard/groups/${group.id}`} className="group block">
-              <div className="flex flex-col p-6 bg-bg-secondary border border-border-subtle rounded-3xl hover:border-brand-accent/50 hover:shadow-2xl hover:shadow-brand-accent/20 transition-all duration-300 hover:-translate-y-2 h-full relative overflow-hidden">
-                <div className="absolute -right-8 -top-8 w-32 h-32 bg-brand-accent/5 rounded-full blur-2xl group-hover:bg-brand-accent/20 transition-colors"></div>
+              <div className="flex flex-col p-5 bg-bg-secondary border border-border-subtle rounded-3xl hover:border-brand-accent/50 hover:shadow-2xl hover:shadow-brand-accent/20 transition-all duration-300 hover:-translate-y-2 h-full relative overflow-hidden">
+                <div className="absolute -right-8 -top-8 w-24 h-24 bg-brand-accent/5 rounded-full blur-2xl group-hover:bg-brand-accent/20 transition-colors"></div>
                 
-                <div className="flex flex-col mb-6 z-10">
+                <div className="flex flex-col mb-4 z-10">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-xl font-black text-text-main group-hover:text-brand-accent transition-colors leading-tight pr-4">
                       {group.name}
                     </h3>
                   </div>
-                  <div className="inline-flex items-center gap-2 px-4 py-2 mt-2 rounded-full bg-brand-accent/10 text-brand-accent font-bold text-sm w-max shadow-sm border border-brand-accent/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 mt-2 rounded-full bg-brand-accent/10 text-brand-accent font-bold text-xs w-max shadow-sm border border-brand-accent/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                     {group._count?.members || 0} Members
@@ -78,15 +78,15 @@ export default function GroupsPage() {
                 </div>
                 
                 {group.description ? (
-                  <p className="text-text-muted text-lg mb-8 line-clamp-2 z-10 flex-1">{group.description}</p>
+                  <p className="text-text-muted text-sm mb-6 line-clamp-2 z-10 flex-1">{group.description}</p>
                 ) : (
-                  <p className="text-text-muted/50 text-lg mb-8 italic z-10 flex-1">No description</p>
+                  <p className="text-text-muted/50 text-sm mb-6 italic z-10 flex-1">No description</p>
                 )}
                 
-                <div className="mt-auto pt-6 border-t border-border-subtle z-10">
+                <div className="mt-auto pt-4 border-t border-border-subtle z-10">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-lg text-text-muted group-hover:text-text-main transition-colors">Enter Group</span>
-                    <span className="w-12 h-12 flex items-center justify-center rounded-full bg-bg-primary text-text-main group-hover:bg-brand-accent group-hover:text-white transition-colors shadow-sm text-xl border border-border-subtle group-hover:border-transparent">
+                    <span className="font-bold text-sm text-text-muted group-hover:text-text-main transition-colors">Enter Group</span>
+                    <span className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-primary text-text-main group-hover:bg-brand-accent group-hover:text-white transition-colors shadow-sm text-lg border border-border-subtle group-hover:border-transparent">
                       →
                     </span>
                   </div>

@@ -27,6 +27,7 @@ import settlementRoutes from './routes/settlement.routes';
 import personalRoutes from './routes/personal.routes';
 import savingsRoutes from './routes/savings.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import friendsRoutes from './routes/friends.routes';
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -38,6 +39,7 @@ app.use('/api/settlements', settlementRoutes);
 app.use('/api/personal-expenses', personalRoutes);
 app.use('/api/savings', savingsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/friends', friendsRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
