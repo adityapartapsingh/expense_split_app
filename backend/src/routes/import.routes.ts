@@ -91,46 +91,136 @@ router.post('/:sessionId/confirm', async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    // Check if any errors are still pending
     const pendingErrors = session.anomalies.filter(a => a.severity === 'error' && a.userDecision === 'pending');
     if (pendingErrors.length > 0) {
       res.status(400).json({ message: 'Must resolve all errors before confirming' });
       return;
     }
 
-    // In a full implementation, we would now parse the original/corrected data 
-    // and insert the accepted rows into Expense and Settlement tables.
-    // For this prototype/assignment, we simulate the import logic.
-    
-    const acceptedAnomalies = session.anomalies.filter(a => a.userDecision === 'accept' || a.userDecision === 'modify');
-    const skippedAnomalies = session.anomalies.filter(a => a.userDecision === 'reject');
-
-    await prisma.importSession.update({
-      where: { id: sessionId },
-      data: {
-        status: 'completed',
-        completedAt: new Date(),
-        importedCount: session.totalRows - skippedAnomalies.length,
-        skippedCount: skippedAnomalies.length
-      }
+    const members = await prisma.groupMember.findMany({
+      where: { groupId: session.groupId },
+      include: { user: true }
     });
 
-    const report = {
-      sessionId: session.id,
-      filename: session.filename,
-      totalRows: session.totalRows,
-      importedCount: session.totalRows - skippedAnomalies.length,
-      skippedCount: skippedAnomalies.length,
-      anomalies: session.anomalies.map(a => ({
-        rowNumber: a.rowNumber,
-        type: a.anomalyType,
-        severity: a.severity,
-        description: a.description,
-        action: a.userDecision
-      }))
-    };
+    const memberMap = new Map<string, number>();
+    members.forEach(m => {
+      memberMap.set(m.user.displayName.toLowerCase(), m.user.id);
+      memberMap.set(m.user.username.toLowerCase(), m.user.id);
+    });
 
-    res.json({ report });
+    const rawData = (session.rawData as any[]) || [];
+    let importedCount = 0;
+    let skippedCount = 0;
+
+    await prisma.$transaction(async (tx) => {
+      for (const row of rawData) {
+        const anomaly = session.anomalies.find(a => a.rowNumber === row.rowNumber);
+        
+        if (anomaly && anomaly.userDecision === 'reject') {
+          skippedCount++;
+          continue;
+        }
+
+        const finalRow = (anomaly && (anomaly.userDecision === 'modify' || anomaly.userDecision === 'accept') && anomaly.correctedData) 
+          ? (anomaly.correctedData as any) 
+          : row;
+
+        if (!finalRow.amount || parseFloat(finalRow.amount) === 0) {
+          skippedCount++;
+          continue;
+        }
+
+        const paidByLower = (finalRow.paid_by || '').toLowerCase();
+        let paidById = memberMap.get(paidByLower);
+        
+        // If paidBy not found, we create a dummy user
+        if (!paidById) {
+          const randomSuffix = Math.floor(Math.random() * 10000000);
+          const newUser = await tx.user.create({
+            data: {
+              username: `dummy_${randomSuffix}`,
+              email: `dummy_${randomSuffix}@example.com`,
+              displayName: finalRow.paid_by || 'Unknown',
+              passwordHash: 'dummy_hash_not_usable'
+            }
+          });
+          await tx.groupMember.create({
+            data: { groupId: session.groupId, userId: newUser.id, role: 'member' }
+          });
+          paidById = newUser.id;
+          memberMap.set(newUser.displayName.toLowerCase(), paidById);
+        }
+
+        const isRefund = parseFloat(finalRow.amount) < 0;
+        const amountStr = String(finalRow.amount).replace(/,/g, '');
+        const amount = Math.abs(parseFloat(amountStr));
+        const dateObj = finalRow.date ? new Date(finalRow.date.split('-').reverse().join('-')) : new Date();
+        const isValidDate = !isNaN(dateObj.getTime());
+        
+        const isSettlement = finalRow.description?.toLowerCase().includes('paid back') || finalRow.description?.toLowerCase().includes('settle');
+
+        const expense = await tx.expense.create({
+          data: {
+            groupId: session.groupId,
+            paidById,
+            description: finalRow.description || 'Imported Expense',
+            amount: amount,
+            currency: finalRow.currency || 'INR',
+            exchangeRate: 1.0,
+            expenseDate: isValidDate ? dateObj : new Date(),
+            splitType: finalRow.split_type?.toLowerCase() || 'equal',
+            notes: finalRow.notes,
+            category: 'other',
+            isSettlement: isSettlement
+          }
+        });
+
+        // Simplified splitting: if 'equal', split among all active members
+        // For CSV import prototype, we just do equal splits if not specified
+        const activeMembers = members.filter(m => !m.leftAt || m.leftAt > dateObj);
+        let splitWithIds = activeMembers.map(m => m.user.id);
+        
+        if (finalRow.split_with) {
+           const names = finalRow.split_with.split(',').map((n: string) => n.trim().toLowerCase());
+           splitWithIds = names.map((n: string) => {
+             return memberMap.get(n);
+           }).filter((id: number | undefined) => id) as number[];
+        }
+        
+        if (splitWithIds.length === 0) splitWithIds = [paidById];
+
+        const owedAmount = amount / splitWithIds.length;
+        const splitData = splitWithIds.map(uId => ({
+          expenseId: expense.id,
+          userId: uId,
+          owedAmount: isRefund ? -owedAmount : owedAmount,
+          owedAmountBase: isRefund ? -owedAmount : owedAmount
+        }));
+
+        await tx.expenseSplit.createMany({ data: splitData });
+        importedCount++;
+      }
+
+      await tx.importSession.update({
+        where: { id: sessionId },
+        data: {
+          status: 'completed',
+          completedAt: new Date(),
+          importedCount,
+          skippedCount
+        }
+      });
+    });
+
+    res.json({ 
+      report: {
+        sessionId: session.id,
+        filename: session.filename,
+        totalRows: session.totalRows,
+        importedCount,
+        skippedCount
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });

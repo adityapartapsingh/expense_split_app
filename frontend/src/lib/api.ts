@@ -113,14 +113,7 @@ class ApiClient {
     });
   }
 
-  async addMember(groupId: number, data: { userId: number; joinedAt: string }) {
-    return this.request<{ member: GroupMember }>(`/groups/${groupId}/members`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async addMemberByUsername(groupId: number, data: { username: string; joinedAt: string }) {
+  async addMember(groupId: number, data: { userId?: number; username?: string; email?: string; phone?: string; joinedAt: string }) {
     return this.request<{ member: GroupMember }>(`/groups/${groupId}/members`, {
       method: 'POST',
       body: JSON.stringify(data),

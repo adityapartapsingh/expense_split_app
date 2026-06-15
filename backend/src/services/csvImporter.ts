@@ -29,7 +29,8 @@ export async function processCSVImport(
       filename,
       totalRows: rawRows.length,
       anomalyCount: anomalies.length,
-      status: 'pending_review'
+      status: 'pending_review',
+      rawData: normalizedRows as any
     }
   });
 

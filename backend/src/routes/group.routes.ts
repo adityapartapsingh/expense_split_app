@@ -118,20 +118,30 @@ router.post('/:id/members', async (req: AuthRequest, res: Response): Promise<voi
 
     const identifier = username || email || phone;
     if (identifier && !userId) {
-      const user = await prisma.user.findFirst({ 
+      let user = await prisma.user.findFirst({ 
         where: { 
           OR: [{ username: identifier }, { email: identifier }, { phone: identifier }] 
         } 
       });
+      
       if (!user) {
-        res.status(404).json({ message: 'User not found' });
-        return;
+        // Create dummy user if not found
+        const randomSuffix = Math.floor(Math.random() * 10000000);
+        user = await prisma.user.create({
+          data: {
+            username: `dummy_${randomSuffix}`,
+            displayName: username || 'Unknown',
+            email: email || `dummy_${randomSuffix}@example.com`,
+            phone: phone || undefined,
+            passwordHash: 'dummy_hash_not_usable' // They cannot login with this
+          }
+        });
       }
       userId = user.id;
     }
 
     if (!userId) {
-      res.status(400).json({ message: 'Either userId or username is required' });
+      res.status(400).json({ message: 'User details are required' });
       return;
     }
 

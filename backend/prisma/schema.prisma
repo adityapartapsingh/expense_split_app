@@ -156,6 +156,7 @@ model ImportSession {
   importedCount Int      @default(0) @map("imported_count")
   skippedCount  Int      @default(0) @map("skipped_count")
   status        String   @default("pending_review") // "pending_review", "in_review", "completed"
+  rawData       Json?    @map("raw_data")
   createdAt     DateTime @default(now()) @map("created_at")
   completedAt   DateTime? @map("completed_at")
 
