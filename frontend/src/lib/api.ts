@@ -250,6 +250,55 @@ class ApiClient {
   async searchUsers(query: string) {
     return this.request<{ users: User[] }>(`/auth/search?q=${encodeURIComponent(query)}`);
   }
+
+  // ─── Personal Expenses ────────────────────────────────────────
+  async getPersonalExpenses(params?: { startDate?: string; endDate?: string; category?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.startDate) searchParams.set('startDate', params.startDate);
+    if (params?.endDate) searchParams.set('endDate', params.endDate);
+    if (params?.category) searchParams.set('category', params.category);
+    return this.request<{ expenses: PersonalExpense[] }>(`/personal-expenses?${searchParams}`);
+  }
+
+  async createPersonalExpense(data: { description: string; amount: number; currency?: string; category?: string; expenseDate: string; notes?: string }) {
+    return this.request<{ expense: PersonalExpense }>('/personal-expenses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePersonalExpense(id: number) {
+    return this.request(`/personal-expenses/${id}`, { method: 'DELETE' });
+  }
+
+  // ─── Savings Targets ──────────────────────────────────────────
+  async getSavingsTargets() {
+    return this.request<{ targets: SavingsTarget[] }>('/savings');
+  }
+
+  async createSavingsTarget(data: { name: string; targetAmount: number; currency?: string; deadline?: string; color?: string }) {
+    return this.request<{ target: SavingsTarget }>('/savings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSavingsTarget(id: number, data: Partial<{ name: string; targetAmount: number; currentAmount: number; deadline: string; color: string }>) {
+    return this.request<{ target: SavingsTarget }>(`/savings/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSavingsTarget(id: number) {
+    return this.request(`/savings/${id}`, { method: 'DELETE' });
+  }
+
+  // ─── Analytics ────────────────────────────────────────────────
+  async getAnalytics(period?: string) {
+    const params = period ? `?period=${period}` : '';
+    return this.request<AnalyticsData>(`/analytics${params}`);
+  }
 }
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -340,7 +389,7 @@ export interface CreateExpenseData {
 export interface Balance {
   userId: number;
   user: User;
-  balance: number; // Positive = others owe you, negative = you owe
+  balance: number;
   totalPaid: number;
   totalOwed: number;
 }
@@ -355,7 +404,7 @@ export interface BalanceDetail {
   paidBy: User;
   yourShare: number;
   yourShareBase: number;
-  netEffect: number; // Positive = gained credit, negative = owe
+  netEffect: number;
 }
 
 export interface SimplifiedDebt {
@@ -421,6 +470,53 @@ export interface ImportReport {
     description: string;
     action: string;
   }[];
+}
+
+export interface PersonalExpense {
+  id: number;
+  userId: number;
+  description: string;
+  amount: number;
+  currency: string;
+  category: string;
+  expenseDate: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface SavingsTarget {
+  id: number;
+  userId: number;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  currency: string;
+  deadline?: string;
+  color: string;
+  createdAt: string;
+}
+
+export interface AnalyticsData {
+  personal: {
+    total: number;
+    categoryBreakdown: Record<string, number>;
+    count: number;
+  };
+  group: {
+    totalSpending: number;
+    totalPaidForOthers: number;
+    totalYouOwe: number;
+    totalSettledOut: number;
+    totalSettledIn: number;
+    netBalance: number;
+  };
+  dailySpending: Record<string, number>;
+  savingsTargets: SavingsTarget[];
+  summary: {
+    totalSpent: number;
+    othersOweYou: number;
+    youOweOthers: number;
+  };
 }
 
 // Export singleton instance

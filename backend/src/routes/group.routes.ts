@@ -104,9 +104,23 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
 
 router.post('/:id/members', async (req: AuthRequest, res: Response): Promise<void> => {
   const groupId = parseInt((req.params.id as string));
-  const { userId, joinedAt } = req.body;
+  let { userId, username, joinedAt } = req.body;
 
   try {
+    if (username) {
+      const user = await prisma.user.findUnique({ where: { username } });
+      if (!user) {
+        res.status(404).json({ message: 'User not found' });
+        return;
+      }
+      userId = user.id;
+    }
+
+    if (!userId) {
+      res.status(400).json({ message: 'Either userId or username is required' });
+      return;
+    }
+
     const existingMember = await prisma.groupMember.findFirst({
       where: {
         groupId,

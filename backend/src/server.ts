@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import http from 'http';
+import https from 'https';
 
 // Load environment variables
 dotenv.config();
@@ -9,8 +11,9 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Middleware
+const allowedOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:3000'];
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json());
@@ -21,14 +24,20 @@ import expenseRoutes from './routes/expense.routes';
 import balanceRoutes from './routes/balance.routes';
 import importRoutes from './routes/import.routes';
 import settlementRoutes from './routes/settlement.routes';
+import personalRoutes from './routes/personal.routes';
+import savingsRoutes from './routes/savings.routes';
+import analyticsRoutes from './routes/analytics.routes';
 
-// Routes will be mounted here
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/expenses', expenseRoutes);
-app.use('/api/groups', balanceRoutes); // nested group routes for balances
+app.use('/api/groups', balanceRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/settlements', settlementRoutes);
+app.use('/api/personal-expenses', personalRoutes);
+app.use('/api/savings', savingsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
@@ -45,4 +54,19 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+  
+  // Self-ping to prevent Render from sleeping on free tier
+  if (process.env.NODE_ENV === 'production') {
+    const pingUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+    const lib = pingUrl.startsWith('https') ? https : http;
+    
+    setInterval(() => {
+      lib.get(`${pingUrl}/health`, (resp) => {
+        console.log(`[Self-Ping] Status: ${resp.statusCode}`);
+      }).on('error', (err) => {
+        console.error(`[Self-Ping] Error: ${err.message}`);
+      });
+    }, 14 * 60 * 1000);
+    console.log(`Self-ping configured for ${pingUrl}`);
+  }
 });

@@ -23,7 +23,7 @@ export default function GroupsPage() {
     };
 
     fetchGroups();
-  }, [error]);
+  }, []);
 
   return (
     <div className="animate-in max-w-5xl mx-auto">

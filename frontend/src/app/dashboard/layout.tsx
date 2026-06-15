@@ -75,6 +75,22 @@ export default function DashboardLayout({
                 Groups
               </Link>
               <Link 
+                href="/dashboard/expenses" 
+                className={`sidebar-link ${pathname === '/dashboard/expenses' ? 'sidebar-link--active' : ''}`}
+                onClick={closeSidebar}
+              >
+                <div className="sidebar-link-icon">💸</div>
+                Personal Expenses
+              </Link>
+              <Link 
+                href="/dashboard/savings" 
+                className={`sidebar-link ${pathname === '/dashboard/savings' ? 'sidebar-link--active' : ''}`}
+                onClick={closeSidebar}
+              >
+                <div className="sidebar-link-icon">🎯</div>
+                Savings Goals
+              </Link>
+              <Link 
                 href="/dashboard/import" 
                 className={`sidebar-link ${pathname.startsWith('/dashboard/import') ? 'sidebar-link--active' : ''}`}
                 onClick={closeSidebar}

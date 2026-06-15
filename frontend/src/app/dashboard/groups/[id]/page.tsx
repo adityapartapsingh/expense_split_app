@@ -1,14 +1,20 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import api, { GroupDetail, Expense, SimplifiedDebt } from '@/lib/api';
 
-export default function GroupPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+import AddMemberModal from '@/components/modals/AddMemberModal';
+import AddExpenseModal from '@/components/modals/AddExpenseModal';
+import SettleDebtModal from '@/components/modals/SettleDebtModal';
+
+export default function GroupPage() {
+  const params = useParams();
+  const id = params.id as string;
   const { user } = useAuth();
-  const { error } = useToast();
+  const { error, success } = useToast();
   
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -17,35 +23,56 @@ export default function GroupPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'members'>('expenses');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Modal states
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [isSettleDebtOpen, setIsSettleDebtOpen] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState<any>(null);
+
+  const fetchData = async () => {
+    if (!id || isNaN(Number(id))) return;
+    try {
+      const [groupData, expensesData, balancesData, debtsData] = await Promise.all([
+        api.getGroup(Number(id)),
+        api.getExpenses(Number(id)),
+        api.getBalances(Number(id)),
+        api.getSimplifiedDebts(Number(id))
+      ]);
+      
+      setGroup(groupData.group);
+      setExpenses(expensesData.expenses);
+      setBalances(balancesData.balances);
+      setDebts(debtsData.debts);
+    } catch (err) {
+      error('Failed to load group details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [groupData, expensesData, balancesData, debtsData] = await Promise.all([
-          api.getGroup(Number(id)),
-          api.getExpenses(Number(id)),
-          api.getBalances(Number(id)),
-          api.getSimplifiedDebts(Number(id))
-        ]);
-        
-        setGroup(groupData.group);
-        setExpenses(expensesData.expenses);
-        setBalances(balancesData.balances);
-        setDebts(debtsData.debts);
-      } catch (err) {
-        error('Failed to load group details');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
-  }, [id, error]);
+  }, [id]);
 
+  const handleRemoveMember = async (userId: number) => {
+    if (!confirm('Are you sure you want to remove this member?')) return;
+    try {
+      await api.removeMember(Number(id), userId);
+      success('Member removed');
+      fetchData();
+    } catch (err: any) {
+      error(err.message || 'Failed to remove member');
+    }
+  };
+
+  if (!id || isNaN(Number(id))) return <div className="p-12 text-center">Invalid Group ID. Please return to the dashboard.</div>;
   if (isLoading) return <div className="flex justify-center p-12"><div className="spinner"></div></div>;
   if (!group) return <div>Group not found</div>;
 
+  const activeMembers = group.members.filter(m => !m.leftAt);
+
   return (
-    <div className="animate-in max-w-5xl mx-auto">
+    <div className="animate-in max-w-5xl mx-auto pb-12">
       <header className="page-header flex justify-between items-end">
         <div>
           <h1 className="page-title mb-2">{group.name}</h1>
@@ -53,7 +80,7 @@ export default function GroupPage({ params }: { params: { id: string } }) {
         </div>
         <div className="flex gap-2">
           <button className="btn btn-secondary">Settings</button>
-          <button className="btn btn-primary" onClick={() => {}}>+ Add Expense</button>
+          <button className="btn btn-primary" onClick={() => setIsAddExpenseOpen(true)}>+ Add Expense</button>
         </div>
       </header>
 
@@ -89,7 +116,9 @@ export default function GroupPage({ params }: { params: { id: string } }) {
                   <div>
                     <h3 className="font-bold mb-1">{expense.description}</h3>
                     <div className="text-sm text-muted">
-                      Paid by {expense.paidBy.id === user?.id ? 'you' : expense.paidBy.displayName} • <span className="badge badge-info uppercase" style={{ fontSize: '0.65rem' }}>{expense.splitType}</span>
+                      {expense.isSettlement ? 'Payment by ' : 'Paid by '} 
+                      {expense.paidBy.id === user?.id ? 'you' : expense.paidBy.displayName} 
+                      {!expense.isSettlement && <span className="badge badge-info uppercase ml-2" style={{ fontSize: '0.65rem' }}>{expense.splitType}</span>}
                     </div>
                   </div>
                 </div>
@@ -98,6 +127,7 @@ export default function GroupPage({ params }: { params: { id: string } }) {
                   {/* Find user's split */}
                   {(() => {
                     const mySplit = expense.splits?.find((s: any) => s.userId === user?.id);
+                    if (expense.isSettlement) return <div className="text-sm text-success">Settlement</div>;
                     if (expense.paidById === user?.id) {
                       return <div className="text-sm text-success">You lent</div>;
                     }
@@ -131,7 +161,6 @@ export default function GroupPage({ params }: { params: { id: string } }) {
                 </div>
               ))}
             </div>
-            {/* Rohan's Requirement: Detailed breakdown link could go here */}
             <button className="btn btn-ghost btn-sm mt-4 text-xs">View detailed calculation breakdown →</button>
           </div>
 
@@ -153,10 +182,23 @@ export default function GroupPage({ params }: { params: { id: string } }) {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-bold">₹{debt.amount.toFixed(2)}</span>
-                      <button className="btn btn-secondary btn-sm">Record Payment</button>
+                      <button 
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => { setSelectedDebt(debt); setIsSettleDebtOpen(true); }}
+                      >
+                        Record Payment
+                      </button>
                     </div>
                   </div>
                 ))
+              )}
+              {debts.length > 0 && (
+                <button 
+                  className="btn btn-ghost btn-sm text-center w-full mt-2"
+                  onClick={() => { setSelectedDebt(null); setIsSettleDebtOpen(true); }}
+                >
+                  Record Custom Payment
+                </button>
               )}
             </div>
           </div>
@@ -166,10 +208,10 @@ export default function GroupPage({ params }: { params: { id: string } }) {
       {activeTab === 'members' && (
         <div className="flex flex-col gap-3">
           <div className="flex justify-end mb-2">
-            <button className="btn btn-secondary btn-sm">Invite Member</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setIsAddMemberOpen(true)}>Invite Member</button>
           </div>
           {group.members?.map((member: any) => (
-            <div key={member.id} className="glass-card flex items-center justify-between">
+            <div key={member.id} className={`glass-card flex items-center justify-between ${member.leftAt ? 'opacity-60' : ''}`}>
               <div className="flex items-center gap-3">
                 <div className="avatar">{member.user.displayName.charAt(0)}</div>
                 <div>
@@ -177,16 +219,48 @@ export default function GroupPage({ params }: { params: { id: string } }) {
                     {member.user.displayName}
                     {!member.leftAt && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }} />}
                   </div>
-                  <div className="text-xs text-muted">Joined {new Date(member.joinedAt).toLocaleDateString()}</div>
+                  <div className="text-xs text-muted">Joined {new Date(member.joinedAt).toLocaleDateString()} {member.leftAt && `• Left ${new Date(member.leftAt).toLocaleDateString()}`}</div>
                 </div>
               </div>
-              <div>
+              <div className="flex items-center gap-3">
                 <span className="badge badge-info">{member.role}</span>
+                {!member.leftAt && member.user.id !== user?.id && (
+                  <button 
+                    className="btn btn-ghost btn-sm text-error" 
+                    onClick={() => handleRemoveMember(member.user.id)}
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Modals */}
+      <AddMemberModal 
+        groupId={Number(id)} 
+        isOpen={isAddMemberOpen} 
+        onClose={() => setIsAddMemberOpen(false)} 
+        onSuccess={() => { setIsAddMemberOpen(false); fetchData(); }} 
+      />
+      <AddExpenseModal
+        groupId={Number(id)}
+        isOpen={isAddExpenseOpen}
+        onClose={() => setIsAddExpenseOpen(false)}
+        onSuccess={() => { setIsAddExpenseOpen(false); fetchData(); }}
+        members={activeMembers}
+        defaultCurrency={group.defaultCurrency}
+      />
+      <SettleDebtModal
+        groupId={Number(id)}
+        isOpen={isSettleDebtOpen}
+        onClose={() => { setIsSettleDebtOpen(false); setSelectedDebt(null); }}
+        onSuccess={() => { setIsSettleDebtOpen(false); setSelectedDebt(null); fetchData(); }}
+        members={activeMembers}
+        debt={selectedDebt}
+      />
     </div>
   );
 }
