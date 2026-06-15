@@ -65,10 +65,34 @@ export default function GroupPage() {
     }
   };
 
+  const handlePromoteMember = async (userId: number) => {
+    if (!confirm('Are you sure you want to promote this member to admin?')) return;
+    try {
+      await api.promoteMember(Number(id), userId);
+      success('Member promoted to admin');
+      fetchData();
+    } catch (err: any) {
+      error(err.message || 'Failed to promote member');
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!confirm('Are you sure you want to leave this group?')) return;
+    try {
+      await api.leaveGroup(Number(id));
+      success('You have left the group');
+      window.location.href = '/dashboard/groups';
+    } catch (err: any) {
+      error(err.message || 'Failed to leave group');
+    }
+  };
+
   if (!id || isNaN(Number(id))) return <div className="p-12 text-center">Invalid Group ID. Please return to the dashboard.</div>;
   if (isLoading) return <div className="flex justify-center p-12"><div className="spinner"></div></div>;
   if (!group) return <div>Group not found</div>;
 
+  const currentUserMember = group.members.find(m => m.user.id === user?.id && !m.leftAt);
+  const isAdmin = currentUserMember?.role === 'admin';
   const activeMembers = group.members.filter(m => !m.leftAt);
 
   return (
@@ -79,7 +103,9 @@ export default function GroupPage() {
           <p className="page-subtitle mb-0">{group.description}</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-secondary">Settings</button>
+          {currentUserMember && (
+            <button className="btn btn-secondary" onClick={handleLeaveGroup}>Leave Group</button>
+          )}
           <button className="btn btn-primary" onClick={() => setIsAddExpenseOpen(true)}>+ Add Expense</button>
         </div>
       </header>
@@ -207,16 +233,18 @@ export default function GroupPage() {
 
       {activeTab === 'members' && (
         <div className="flex flex-col gap-3">
-          <div className="flex justify-end mb-2">
-            <button className="btn btn-secondary btn-sm" onClick={() => setIsAddMemberOpen(true)}>Invite Member</button>
-          </div>
+          {isAdmin && (
+            <div className="flex justify-end mb-2">
+              <button className="btn btn-secondary btn-sm" onClick={() => setIsAddMemberOpen(true)}>Invite Member</button>
+            </div>
+          )}
           {group.members?.map((member: any) => (
             <div key={member.id} className={`glass-card flex items-center justify-between ${member.leftAt ? 'opacity-60' : ''}`}>
               <div className="flex items-center gap-3">
                 <div className="avatar">{member.user.displayName.charAt(0)}</div>
                 <div>
                   <div className="font-medium flex items-center gap-2">
-                    {member.user.displayName}
+                    {member.user.displayName} {member.user.id === user?.id ? '(You)' : ''}
                     {!member.leftAt && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }} />}
                   </div>
                   <div className="text-xs text-muted">Joined {new Date(member.joinedAt).toLocaleDateString()} {member.leftAt && `• Left ${new Date(member.leftAt).toLocaleDateString()}`}</div>
@@ -224,13 +252,23 @@ export default function GroupPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="badge badge-info">{member.role}</span>
-                {!member.leftAt && member.user.id !== user?.id && (
-                  <button 
-                    className="btn btn-ghost btn-sm text-error" 
-                    onClick={() => handleRemoveMember(member.user.id)}
-                  >
-                    Remove
-                  </button>
+                {!member.leftAt && member.user.id !== user?.id && isAdmin && (
+                  <div className="flex gap-2">
+                    {member.role !== 'admin' && (
+                      <button 
+                        className="btn btn-ghost btn-sm" 
+                        onClick={() => handlePromoteMember(member.user.id)}
+                      >
+                        Make Admin
+                      </button>
+                    )}
+                    <button 
+                      className="btn btn-ghost btn-sm text-error" 
+                      onClick={() => handleRemoveMember(member.user.id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

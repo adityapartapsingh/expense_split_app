@@ -7,17 +7,17 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 const router = Router();
 
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
-  const { email, username, displayName, password } = req.body;
+  const { email, phone, username, displayName, password } = req.body;
 
   try {
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ email }, { username }]
+        OR: [{ email }, { username }, ...(phone ? [{ phone }] : [])]
       }
     });
 
     if (existingUser) {
-      res.status(400).json({ message: 'Email or username already exists' });
+      res.status(400).json({ message: 'Email, phone, or username already exists' });
       return;
     }
 
@@ -26,6 +26,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     const user = await prisma.user.create({
       data: {
         email,
+        phone,
         username,
         displayName,
         passwordHash
@@ -40,6 +41,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       user: {
         id: user.id,
         email: user.email,
+        phone: user.phone,
         username: user.username,
         displayName: user.displayName,
         createdAt: user.createdAt
@@ -57,7 +59,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await prisma.user.findFirst({
       where: {
-        OR: [{ email: login }, { username: login }]
+        OR: [{ email: login }, { username: login }, { phone: login }]
       }
     });
 
@@ -81,6 +83,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       user: {
         id: user.id,
         email: user.email,
+        phone: user.phone,
         username: user.username,
         displayName: user.displayName,
         createdAt: user.createdAt
@@ -99,6 +102,7 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res: Response): Pr
       select: {
         id: true,
         email: true,
+        phone: true,
         username: true,
         displayName: true,
         createdAt: true

@@ -104,11 +104,25 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
 
 router.post('/:id/members', async (req: AuthRequest, res: Response): Promise<void> => {
   const groupId = parseInt((req.params.id as string));
-  let { userId, username, joinedAt } = req.body;
+  let { userId, username, email, phone, joinedAt } = req.body;
+  const currentUserId = req.user!.id;
 
   try {
-    if (username) {
-      const user = await prisma.user.findUnique({ where: { username } });
+    const currentMember = await prisma.groupMember.findFirst({
+      where: { groupId, userId: currentUserId, leftAt: null }
+    });
+    if (!currentMember || currentMember.role !== 'admin') {
+      res.status(403).json({ message: 'Only admins can add members' });
+      return;
+    }
+
+    const identifier = username || email || phone;
+    if (identifier && !userId) {
+      const user = await prisma.user.findFirst({ 
+        where: { 
+          OR: [{ username: identifier }, { email: identifier }, { phone: identifier }] 
+        } 
+      });
       if (!user) {
         res.status(404).json({ message: 'User not found' });
         return;
@@ -182,11 +196,81 @@ router.patch('/:id/members/:userId', async (req: AuthRequest, res: Response): Pr
   }
 });
 
+router.patch('/:id/members/:userId/promote', async (req: AuthRequest, res: Response): Promise<void> => {
+  const groupId = parseInt((req.params.id as string));
+  const memberUserId = parseInt((req.params.userId as string));
+  const currentUserId = req.user!.id;
+
+  try {
+    const currentMember = await prisma.groupMember.findFirst({
+      where: { groupId, userId: currentUserId, leftAt: null }
+    });
+    if (!currentMember || currentMember.role !== 'admin') {
+      res.status(403).json({ message: 'Only admins can promote members' });
+      return;
+    }
+
+    const member = await prisma.groupMember.findFirst({
+      where: { groupId, userId: memberUserId, leftAt: null }
+    });
+
+    if (!member) {
+      res.status(404).json({ message: 'Active member not found' });
+      return;
+    }
+
+    const updatedMember = await prisma.groupMember.update({
+      where: { id: member.id },
+      data: { role: 'admin' }
+    });
+
+    res.json({ message: 'Member promoted to admin', member: updatedMember });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.delete('/:id/members/me', async (req: AuthRequest, res: Response): Promise<void> => {
+  const groupId = parseInt((req.params.id as string));
+  const userId = req.user!.id;
+
+  try {
+    const member = await prisma.groupMember.findFirst({
+      where: { groupId, userId, leftAt: null }
+    });
+
+    if (!member) {
+      res.status(404).json({ message: 'Active member not found' });
+      return;
+    }
+
+    const updatedMember = await prisma.groupMember.update({
+      where: { id: member.id },
+      data: { leftAt: new Date() }
+    });
+
+    res.json({ message: 'You have left the group', member: updatedMember });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 router.delete('/:id/members/:userId', async (req: AuthRequest, res: Response): Promise<void> => {
   const groupId = parseInt((req.params.id as string));
   const memberUserId = parseInt((req.params.userId as string));
+  const currentUserId = req.user!.id;
 
   try {
+    const currentMember = await prisma.groupMember.findFirst({
+      where: { groupId, userId: currentUserId, leftAt: null }
+    });
+    if (!currentMember || currentMember.role !== 'admin') {
+      res.status(403).json({ message: 'Only admins can remove members' });
+      return;
+    }
+
     const member = await prisma.groupMember.findFirst({
       where: { groupId, userId: memberUserId, leftAt: null }
     });
