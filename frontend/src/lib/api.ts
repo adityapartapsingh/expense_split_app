@@ -134,6 +134,18 @@ class ApiClient {
     });
   }
 
+  async promoteMember(groupId: number, userId: number) {
+    return this.request(`/groups/${groupId}/members/${userId}/promote`, {
+      method: 'PATCH',
+    });
+  }
+
+  async leaveGroup(groupId: number) {
+    return this.request(`/groups/${groupId}/members/me`, {
+      method: 'DELETE',
+    });
+  }
+
   // ─── Expenses ─────────────────────────────────────────────────
   async getExpenses(groupId: number, params?: {
     page?: number;
